@@ -91,7 +91,7 @@ async function main() {
 
   // 3. 通常起動: Pi Coding Agent SDK 標準フルTUI（InteractiveMode）
   // 小説執筆専用の InlineExtension を注入して起動
-  const novelaidExtension = createNovelaidExtension();
+  const novelaidExtension = createNovelaidExtension({ projectDir });
   await runPiMain(args, {
     extensionFactories: [novelaidExtension],
   });
