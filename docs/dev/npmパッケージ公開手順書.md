@@ -117,7 +117,16 @@ TypeScript プロジェクトにおいて最も起こりやすい事故は、「
     "writing",
     "tui"
   ],
-  "license": "MIT"
+  "author": "Mizuki Mituha",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mituha/novelaid-cli.git"
+  },
+  "homepage": "https://github.com/mituha/novelaid-cli",
+  "bugs": {
+    "url": "https://github.com/mituha/novelaid-cli/issues"
+  }
 }
 ```
 
