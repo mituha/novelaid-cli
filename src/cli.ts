@@ -3,21 +3,22 @@
  * 小説執筆補助用AIエージェント CLIツール
  */
 
+import { main as runPiMain } from "@earendil-works/pi-coding-agent";
 import { initializeModelRuntime } from "./model-manager.js";
 import { startChatSession } from "./chat-session.js";
+import { createNovelAidExtension } from "./extensions/novel-aid.js";
 
 async function main() {
   const args = process.argv.slice(2);
-  const isTestMode = args.includes("--test");
 
-  console.log("=========================================");
-  console.log("  novelaid-cli (小説執筆補助エージェント)  ");
-  console.log("=========================================");
-  console.log("Pi Coding Agent SDK ランタイムを初期化中...\n");
+  // 1. --test モード: 単発の推論テスト
+  if (args.includes("--test")) {
+    console.log("=========================================");
+    console.log("  novelaid-cli (小説執筆補助エージェント)  ");
+    console.log("=========================================");
+    console.log("Pi Coding Agent SDK ランタイムを初期化中...\n");
 
-  try {
     const { runtime, lmStudioStatus } = await initializeModelRuntime();
-
     console.log("【AIモデル接続ステータス】");
     if (lmStudioStatus.connected) {
       console.log(`✔ ローカルLM Studio: 接続成功 (${lmStudioStatus.baseUrl})`);
@@ -25,15 +26,7 @@ async function main() {
       for (const model of lmStudioStatus.models) {
         console.log(`   - [${model.id}] ${model.name} (コンテキスト窓: ${model.contextWindow.toLocaleString()} tokens)`);
       }
-    } else {
-      console.log(`✖ ローカルLM Studio: 未接続 (${lmStudioStatus.baseUrl})`);
-      console.log(`  理由: ${lmStudioStatus.error}`);
-      console.log("  ※ LM Studio を起動し、ローカルサーバー（ポート1234）を開始してください。\n");
-      return;
-    }
 
-    // --test モード: 単発の推論テスト
-    if (isTestMode) {
       console.log("\n【推論疎通テスト（1往復）を実行中...】");
       const testModel = runtime.getModels("lm-studio")[0];
       if (testModel) {
@@ -56,16 +49,33 @@ async function main() {
         }
         console.log("✔ 推論疎通テストに成功しました！");
       }
-      return;
+    } else {
+      console.log(`✖ ローカルLM Studio: 未接続 (${lmStudioStatus.baseUrl})`);
+      console.log(`  理由: ${lmStudioStatus.error}`);
     }
-
-    // 通常モード: インタラクティブ対話ループの開始
-    await startChatSession({ runtime });
-
-  } catch (error) {
-    console.error("初期化エラー:", error);
-    process.exit(1);
+    return;
   }
+
+  // 2. --simple モード: 軽量 readline 対話セッション
+  if (args.includes("--simple")) {
+    console.log("=========================================");
+    console.log("  novelaid-cli (軽量 readline モード)     ");
+    console.log("=========================================");
+    const { runtime, lmStudioStatus } = await initializeModelRuntime();
+    if (!lmStudioStatus.connected) {
+      console.error(`エラー: LM Studio に接続できませんでした (${lmStudioStatus.error})`);
+      process.exit(1);
+    }
+    await startChatSession({ runtime });
+    return;
+  }
+
+  // 3. 通常起動: Pi Coding Agent SDK 標準フルTUI（InteractiveMode）
+  // 小説執筆専用の InlineExtension を注入して起動
+  const novelAidExtension = createNovelAidExtension();
+  await runPiMain(args, {
+    extensionFactories: [novelAidExtension],
+  });
 }
 
 main().catch((err) => {
