@@ -6,9 +6,17 @@
   "bin": {
     "novelaid": "./bin/novelaid.js"
   },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "start": "node dist/cli.js"
   },
   "keywords": [
@@ -16,7 +24,9 @@
     "assistant",
     "ai",
     "agent",
-    "cli"
+    "cli",
+    "writing",
+    "tui"
   ],
   "author": "",
   "license": "MIT",
