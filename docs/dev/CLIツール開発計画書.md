@@ -103,14 +103,14 @@ flowchart LR
   - `typescript`, `@types/node`, `tsx`（開発時実行用）
 - [x] ビルドスクリプトおよびCLI起動エントリーポイント（`src/cli.ts`, `bin/novelaid.js`）の作成と疎通確認。
 
-### Step 2-1: Pi SDK `ModelRuntime` によるモデル接続・一覧取得と疎通テスト（← 次の着手対象）
-- [ ] `src/model-manager.ts`（または `src/cli.ts`）に Pi SDK の `ModelRuntime` を組み込み。
-- [ ] LM Studio プロバイダーの登録（`modelRuntime.registerProvider`）。
-- [ ] `modelRuntime.refresh()` による LM Studio モデル一覧の取得・一覧表示。
-- [ ] `modelRuntime.checkAuth("lm-studio")` による接続可能テストの実施。
-- [ ] 接続成否に応じた適切なターミナル表示（成功時: モデル一覧、失敗時: トラブルシューティング案内）。
+### Step 2-1: Pi SDK `ModelRuntime` によるモデル接続・一覧取得と疎通テスト（✔ 完了）
+- [x] `src/model-manager.ts` に Pi SDK の `ModelRuntime` および LM Studio 接続モジュールを実装。
+- [x] LM Studio サーバーからの動的モデル取得と `modelRuntime.registerProvider("lm-studio", ...)` によるプロバイダー登録。
+- [x] `runtime.getModels("lm-studio")` によるモデル一覧取得とターミナル整形表示。
+- [x] `runtime.checkAuth("lm-studio")` および `--test` オプションによる1往復推論疎通テストの実装・検証完了。
+- [x] 接続失敗時のトラブルシューティング案内の実装。
 
-### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装
+### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装（← 次の着手対象）
 - [ ] `createAgentSession()` を用いたセッション初期化処理の実装。
 - [ ] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
   - `message_update` & `text_delta` による思考・テキストの順次描画。
