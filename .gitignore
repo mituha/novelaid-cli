@@ -41,6 +41,7 @@ publish.html
 # Node / TypeScript
 node_modules/
 dist/
+scratch/
 
 # Allow Node.js bin directory
 !bin/

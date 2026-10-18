@@ -5,7 +5,23 @@ import {
   type AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 import { fetchLmStudioModels, DEFAULT_LM_STUDIO_URL } from "../model-manager.js";
-import { WorkspaceNavigator } from "../workspace/index.js";
+import { WorkspaceNavigator, type NovelaidDocumentType } from "../workspace/index.js";
+
+/**
+ * ドキュメントタイプに応じたAI執筆ペルソナ・ガイドラインの取得
+ */
+export function getPersonaGuideline(docType: NovelaidDocumentType): string {
+  switch (docType) {
+    case "novel":
+      return "The current workspace is for novel manuscript. Focus on literary expression, prose rhythm, dialogue, descriptive details, and emotional depth.";
+    case "markdown":
+      return "The current workspace is for plot, world settings, characters, or research notes. Focus on logical consistency, cause-and-effect, foreshadowing, and structured outlines.";
+    case "chat":
+      return "The current workspace is for informal brainstorming or conversational ideation. Engage freely, suggest creative alternatives, and bounce ideas.";
+    default:
+      return "Provide general novel writing and world-building assistance aligned with the project structure.";
+  }
+}
 
 /**
  * novelaid-cli 小説執筆補助 InlineExtension
@@ -51,13 +67,16 @@ export function createNovelaidExtension(options?: {
 
       // 2. ディレクトリ現在位置表示コマンド (/pwd)
       api.registerCommand("pwd", {
-        description: "現在の作業フォルダーの位置を表示します",
+        description: "現在の作業フォルダーの位置と種別を表示します",
         handler: async (_args, ctx) => {
           const rel = navigator.getRelativeDir();
+          const displayRel = !rel || rel === "." ? "(プロジェクトルート)" : rel;
           const abs = navigator.getCurrentDir();
+          const docType = navigator.getDirectoryType(abs);
           ctx.ui.notify(
             `【現在の作業フォルダー】\n` +
-            `・相対位置: [${rel}]\n` +
+            `・相対位置: [${displayRel}]\n` +
+            `・フォルダー種別: ${docType}\n` +
             `・絶対パス: ${abs}\n` +
             `・書庫ルート: ${navigator.rootDir}`,
             "info"
@@ -101,13 +120,17 @@ export function createNovelaidExtension(options?: {
       api.registerCommand("novelaid-info", {
         description: "novelaid-cli の概要と執筆支援ステータスを表示します",
         handler: async (_args, ctx) => {
+          const rel = navigator.getRelativeDir();
+          const displayRel = !rel || rel === "." ? "(プロジェクトルート)" : rel;
+          const docType = navigator.getDirectoryType(navigator.getCurrentDir());
           ctx.ui.notify(
             "【novelaid-cli】小説執筆補助エージェント (Pi SDK Native Extension)\n" +
-            `・作業フォルダー: [${navigator.getRelativeDir()}]\n` +
+            `・作業フォルダー: [${displayRel}] (${docType})\n` +
             `・書庫ルート: ${navigator.rootDir}\n` +
             "・フォルダー移動: /cd <パス>（ルート上限保護・Tab補完対応）\n" +
             "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
+            "・AI文脈連携: 作業フォルダーとDocumentTypeを自動注入\n" +
             "・モデル管理: /model で選択可能",
             "info"
           );
@@ -155,6 +178,24 @@ export function createNovelaidExtension(options?: {
             },
           };
         });
+      });
+
+      // 7. AIエージェント思考開始前の現在地・DocumentType動的注入
+      api.on("before_agent_start", async (event, _ctx) => {
+        const rel = navigator.getRelativeDir();
+        const activeDir = !rel || rel === "." ? "(root)" : rel;
+        const currentDir = navigator.getCurrentDir();
+        const dirType = navigator.getDirectoryType(currentDir);
+        const persona = getPersonaGuideline(dirType);
+
+        const workspaceContent = [
+          `- Active Directory: [${activeDir}]`,
+          `- Document Type: ${dirType}`,
+          `- Working Scope Rule: When the user refers to files without an explicit directory path (e.g. "第1話.txt" or "setting.md"), look in Active Directory first before the project root.`,
+          `- Role Guideline: ${persona}`,
+        ].join("\n");
+
+        event.systemPromptOptions.sections["novelaid_workspace"] = workspaceContent;
       });
     },
   };
