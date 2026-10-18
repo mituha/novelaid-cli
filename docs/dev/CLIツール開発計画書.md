@@ -87,8 +87,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    S1[Step 1: 環境基盤構築 ✔] --> S2_1[Step 2-1: SDKモデル接続テスト]
-    S2_1 --> S2_2[Step 2-2: セッション・対話UI実装]
+    S1[Step 1: 環境基盤構築 ✔] --> S2_1[Step 2-1: SDKモデル接続テスト ✔]
+    S2_1 --> S2_2[Step 2-2: セッション・対話UI実装 ✔]
     S2_2 --> S3[Step 3: 小説補助コンテキスト組込]
     S3 --> S4[Step 4: 動作検証と調整]
 ```
@@ -110,17 +110,19 @@ flowchart LR
 - [x] `runtime.checkAuth("lm-studio")` および `--test` オプションによる1往復推論疎通テストの実装・検証完了。
 - [x] 接続失敗時のトラブルシューティング案内の実装。
 
-### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装（← 次の着手対象）
-- [ ] `createAgentSession()` を用いたセッション初期化処理の実装。
-- [ ] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
+### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装（✔ 完了）
+- [x] `createAgentSession()` を用いたセッション初期化処理の実装（`src/chat-session.ts`）。
+- [x] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
+  - `message_start` によるアシスタント応答開始検知。
   - `message_update` & `text_delta` による思考・テキストの順次描画。
-  - `message_end` / `agent_settled` によるターン完了検知。
-- [ ] ターミナル入力受付（インタラクティブループ）の実装:
+  - `turn_end` によるターン完了検知と適切な改行。
+- [x] ターミナル入力受付（インタラクティブループ）の実装:
+  - `readline` の非同期イテレータ（`for await (const line of rl)`）を用いた堅牢な入力ループ。
   - ユーザーからの指示入力 → `session.prompt()` の実行。
-  - 特殊コマンド（`/exit`, `/clear`, `/help`, `/model` 等）のハンドリング。
-- [ ] 終了時のクリーンアップ処理（`session.dispose()`）。
+  - 特殊コマンド（`/exit`, `/clear`, `/help`, `/model`）のハンドリング。
+- [x] 終了時のクリーンアップ処理（`session.dispose()`, `rl.close()`）。
 
-### Step 3: 小説執筆補助の専門コンテキスト組み込み
+### Step 3: 小説執筆補助の専門コンテキスト組み込み（← 次の着手対象）
 - 小説執筆補助に特化したシステムプロンプトの設計:
   - 役割: 作家の思考パートナー（ブレインストーミング、プロット構成、伏線考証、文体推敲）。
   - 対話姿勢: 創作意図を尊重し、一方的な決定ではなく選択肢や壁打ち相手として提案を行う。

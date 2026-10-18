@@ -4,6 +4,7 @@
  */
 
 import { initializeModelRuntime } from "./model-manager.js";
+import { startChatSession } from "./chat-session.js";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -27,10 +28,12 @@ async function main() {
     } else {
       console.log(`✖ ローカルLM Studio: 未接続 (${lmStudioStatus.baseUrl})`);
       console.log(`  理由: ${lmStudioStatus.error}`);
-      console.log("  ※ LM Studio を起動し、ローカルサーバー（ポート1234）を開始してください。");
+      console.log("  ※ LM Studio を起動し、ローカルサーバー（ポート1234）を開始してください。\n");
+      return;
     }
 
-    if (isTestMode && lmStudioStatus.connected && lmStudioStatus.models.length > 0) {
+    // --test モード: 単発の推論テスト
+    if (isTestMode) {
       console.log("\n【推論疎通テスト（1往復）を実行中...】");
       const testModel = runtime.getModels("lm-studio")[0];
       if (testModel) {
@@ -53,9 +56,12 @@ async function main() {
         }
         console.log("✔ 推論疎通テストに成功しました！");
       }
+      return;
     }
 
-    console.log("\n[Step 2-1] Pi SDK ModelRuntime によるモデル接続・一覧取得テストが完了しました。");
+    // 通常モード: インタラクティブ対話ループの開始
+    await startChatSession({ runtime });
+
   } catch (error) {
     console.error("初期化エラー:", error);
     process.exit(1);
