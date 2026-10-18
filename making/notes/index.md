@@ -17,14 +17,15 @@
 | 第6回 | [第6回：車輪の再発明をやめ、Pi SDK標準フルTUIとエコに統合する —— InlineExtensionでLM Studioと公式TUIを融合した実践](./06_Pi_SDK標準TUIとInlineExtensionのエコ統合.md) | フルTUI（InteractiveMode）採用の背景、InlineExtensionによるLM Studio動的プロバイダー登録、ハイブリッド起動構成の実装記録。 | 公開中・推敲済 |
 | 第7回 | [第7回：迷子にならない小説執筆空間！フォルダー階層移動（/cd）・一覧表示（/ls）・Tab補完の実装 —— Pi SDK拡張APIを活用した現在地管理](./07_フォルダー階層移動と一覧表示および補完機能の実装.md) | 小説プロジェクトの階層移動（/cd）、ルート上限保護、フォルダー内一覧（/ls）、Pi SDK公式拡張API（addAutocompleteProvider）による動的Tab補完の実装記録。 | 公開中・推敲済 |
 | 第8回 | [第8回：世界へ届け！自作CLIツールをnpmで公式公開する完全ロードマップ —— 失敗しないpackage.json設定と配布ファイル制御の極意](./08_自作CLIツールをnpmで公式パッケージ公開する完全手順.md) | npm登録の事前要件、パッケージ名の空き調査、.gitignoreとfilesフィールドの罠、prepublishOnlyフック、ドライラン検証の完全ガイド。 | 公開中・推敲済 |
+| 第9回 | [第9回：小説コンテキストの自動分類とAI現在地動的同期 —— DocumentTypeとbefore_agent_startフック](./09_小説コンテキストの自動分類とAI現在地動的同期.md) | Pi SDKのcwd内部仕様解明、二層ディレクトリ構造、NovelaidDocumentTypeと.novelaidattributesによる自動分類、before_agent_startフックによる執筆ペルソナ・現在地の動的XMLプロンプト注入。 | 公開中・推敲済 |
 
 ---
 
 ## 📌 今後の連載予定（ロードマップ）
 
-- **第9回**: Step 3-3 & 3-4 DocumentType によるフォルダー・ファイル自動分類とセマンティック移動（Front Matter 解析と専用ショートカット）
-- **第10回**: Step 3-5 小説執筆特化 `AGENTS.md` の設計と自動読み込み（専任編集者ペルソナ）
-- **第11回**: Step 4 動作確認と検証（実践シナリオでの対話テストと調整）
+- **第10回**: Step 3-4 セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装（分類情報を活かした直感的クイック移動）
+- **第11回**: Step 3-5 小説執筆特化 `AGENTS.md` の設計と自動読み込み（専任編集者ペルソナ）
+- **第12回**: Step 4 動作確認と検証（実践シナリオでの対話テストと調整）
 - （順次更新予定）
 
 
