@@ -1,0 +1,19 @@
+{
+  "prompt-logger": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/sync-prompt-log.ps1 -FromHook",
+        "timeout": 15
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/sync-prompt-log.ps1 -FromHook",
+        "timeout": 15
+      }
+    ]
+  }
+}
