@@ -114,21 +114,25 @@ flowchart LR
 
 ### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装（✔ 完了）
 - [x] `createAgentSession()` を用いたセッション初期化処理の実装（`src/chat-session.ts`）。
-- [x] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
-  - `message_start` によるアシスタント応答開始検知。
-  - `message_update` & `text_delta` による思考・テキストの順次描画。
-  - `turn_end` によるターン完了検知と適切な改行。
-- [x] ターミナル入力受付（インタラクティブループ）の実装:
-  - `readline` の非同期イテレータ（`for await (const line of rl)`）を用いた堅牢な入力ループ。
-  - ユーザーからの指示入力 → `session.prompt()` の実行。
-  - 特殊コマンド（`/exit`, `/clear`, `/help`, `/model`）のハンドリング。
-- [x] 終了時のクリーンアップ処理（`session.dispose()`, `rl.close()`）。
+- [x] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装。
+- [x] 宣言的コマンド管理（`CommandRegistry`）による `/help`, `/model`, `/clear`, `/exit` の共通処理化。
+
+### Step 2-3: Pi SDK標準フルTUI（InteractiveMode）へのエコ統合（✔ 完了）
+- [x] Pi SDK 公式フルTUI（`InteractiveMode`）をメインエントリーポイントへ統合（自作TUIの車輪の再発明を回避）。
+- [x] 公式 `InlineExtension`（`novelaidExtension`）による LM Studio モデルの動的プロバイダー登録と `/novelaid-info` コマンドの実装。
+- [x] ハイブリッド起動（通常フルTUI、`--simple` 軽量readline、`--test` 疎通テスト）の実装・検証完了。
 
 ### Step 3: 小説執筆補助の専門コンテキスト組み込み（← 次の着手対象）
-- 小説執筆補助に特化したシステムプロンプトの設計:
-  - 役割: 作家の思考パートナー（ブレインストーミング、プロット構成、伏線考証、文体推敲）。
-  - 対話姿勢: 創作意図を尊重し、一方的な決定ではなく選択肢や壁打ち相手として提案を行う。
-- ワークスペース内の設定資料（Markdownファイルなど）を参照できる基礎的な読み込み方針の設計。
+※機能の全体像と詳細設計は [小説執筆補助機能計画書.md](./小説執筆補助機能計画書.md) を参照。
+- **Phase 1: 基礎コンテキスト確立**:
+  - 小説執筆特化の `AGENTS.md` 設計（作家専属の編集者・アシスタントペルソナ）。
+  - 書庫内設定資料（`settings/`, `characters/`, `plot.md`）の自動検出とコンテキスト注入。
+- **Phase 2: 創作支援スラッシュコマンド**:
+  - `InlineExtension` による専用コマンド（`/ctx`, `/plot`, `/role`, `/stats`）の実装。
+- **Phase 3: 推敲・校正エンジンの統合**:
+  - 原稿文章のレビュー・改善提案コマンド（`/review`）とルールベース校正連携。
+- **Phase 4: 相互運用＆履歴管理**:
+  - `novelaid-editor` 互換の対話ログ保存（`.ch` 形式）およびGit執筆スナップショット機能。
 
 ### Step 4: 動作確認と検証
 - 実際の対話シナリオによる動作検証（LM Studio および Gemini それぞれで確認）:
