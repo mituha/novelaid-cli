@@ -1,4 +1,9 @@
 import type { ExtensionAPI, InlineExtension } from "@earendil-works/pi-coding-agent";
+import {
+  type AutocompleteItem,
+  type AutocompleteProvider,
+  type AutocompleteSuggestions,
+} from "@earendil-works/pi-tui";
 import { fetchLmStudioModels, DEFAULT_LM_STUDIO_URL } from "../model-manager.js";
 import { WorkspaceNavigator } from "../workspace/index.js";
 
@@ -100,13 +105,56 @@ export function createNovelaidExtension(options?: {
             "【novelaid-cli】小説執筆補助エージェント (Pi SDK Native Extension)\n" +
             `・作業フォルダー: [${navigator.getRelativeDir()}]\n` +
             `・書庫ルート: ${navigator.rootDir}\n` +
-            "・フォルダー移動: /cd <パス>（ルート上限保護あり）\n" +
+            "・フォルダー移動: /cd <パス>（ルート上限保護・Tab補完対応）\n" +
             "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
             "・モデル管理: /model で選択可能",
             "info"
           );
         },
+      });
+
+      // 6. /cd, /ls, /dir コマンドのパス引数自動補完プロバイダーの登録
+      api.on("session_start", async (_event, ctx) => {
+        ctx.ui.addAutocompleteProvider((current: AutocompleteProvider): AutocompleteProvider => {
+          return {
+            async getSuggestions(lines, cursorLine, cursorCol, options): Promise<AutocompleteSuggestions | null> {
+              const currentLine = lines[cursorLine] ?? "";
+              const textBeforeCursor = currentLine.slice(0, cursorCol);
+
+              // /cd, /ls, /dir コマンドの引数入力を検出（例: "/cd ", "/cd 10", "/cd 10_novels/"）
+              const match = textBeforeCursor.match(/^\s*\/(?:cd|ls|dir)\s+([^\s]*)$/);
+              if (!match) {
+                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+              }
+
+              const rawArg = match[1] ?? "";
+              const result = navigator.getFolderSuggestions(rawArg);
+              if (result.suggestions.length === 0) {
+                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+              }
+
+              const items: AutocompleteItem[] = result.suggestions.map((s) => ({
+                value: s.path,
+                label: s.path,
+                description: s.description,
+              }));
+
+              return {
+                items,
+                prefix: result.prefix,
+              };
+            },
+
+            applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
+              return current.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+            },
+
+            shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
+              return current.shouldTriggerFileCompletion?.(lines, cursorLine, cursorCol) ?? true;
+            },
+          };
+        });
       });
     },
   };

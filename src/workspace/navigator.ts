@@ -23,6 +23,17 @@ export interface ListResult {
   message?: string;
 }
 
+export interface FolderSuggestion {
+  name: string;
+  path: string;
+  description?: string;
+}
+
+export interface FolderSuggestionResult {
+  suggestions: FolderSuggestion[];
+  prefix: string;
+}
+
 /**
  * ファイルサイズを人間が読みやすい形式に整形
  */
@@ -240,6 +251,79 @@ export class WorkspaceNavigator {
       }
     }
     return lines.join("\n");
+  }
+
+  /**
+   * /cd 等のパス入力に対するフォルダー補完候補を取得
+   * @param rawArg 入力途中の引数（例: "" や "10" や "10_novels/01"）
+   */
+  getFolderSuggestions(rawArg: string = ""): FolderSuggestionResult {
+    // スラッシュを正規化
+    const normalized = rawArg.replace(/\\/g, "/");
+
+    // ディレクトリ部分とプレフィックス部分に分割
+    const lastSlashIndex = normalized.lastIndexOf("/");
+    let searchDirRel = "";
+    let prefix = normalized;
+
+    if (lastSlashIndex >= 0) {
+      searchDirRel = normalized.slice(0, lastSlashIndex);
+      prefix = normalized.slice(lastSlashIndex + 1);
+    }
+
+    // 検索対象フォルダーの絶対パスを解決
+    const searchTarget = searchDirRel ? path.resolve(this.currentDir, searchDirRel) : this.currentDir;
+
+    // ルート外チェック
+    if (!this.isWithinRoot(searchTarget) || !fs.existsSync(searchTarget)) {
+      return { suggestions: [], prefix };
+    }
+
+    try {
+      const stat = fs.statSync(searchTarget);
+      if (!stat.isDirectory()) {
+        return { suggestions: [], prefix };
+      }
+
+      const entries = fs.readdirSync(searchTarget, { withFileTypes: true });
+      const suggestions: FolderSuggestion[] = [];
+
+      // 親ディレクトリへの移動候補（..）
+      // プロジェクトルートにいない場合、かつ prefix が "." または ".." の前方に一致、あるいは空の場合に提示
+      const canGoUp = searchTarget !== this.rootDir;
+      if (canGoUp && (prefix === "" || "..".startsWith(prefix))) {
+        suggestions.push({
+          name: "..",
+          path: "../",
+          description: "親フォルダー",
+        });
+      }
+
+      for (const ent of entries) {
+        if (!ent.isDirectory()) continue;
+        if (ent.name.startsWith(".")) continue; // 隠しディレクトリは除外
+
+        // プレフィックス一致（大文字小文字を区別せず比較）
+        if (prefix === "" || ent.name.toLowerCase().startsWith(prefix.toLowerCase())) {
+          suggestions.push({
+            name: ent.name,
+            path: `${ent.name}/`,
+            description: "フォルダー",
+          });
+        }
+      }
+
+      // ソート（.. は先頭、それ以外は名前順）
+      suggestions.sort((a, b) => {
+        if (a.name === "..") return -1;
+        if (b.name === "..") return 1;
+        return a.name.localeCompare(b.name, "ja");
+      });
+
+      return { suggestions, prefix };
+    } catch {
+      return { suggestions: [], prefix };
+    }
   }
 
   /**

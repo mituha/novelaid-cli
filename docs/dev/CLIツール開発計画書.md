@@ -142,12 +142,12 @@ flowchart LR
   - [x] `InlineExtension` への `/ls`（エイリアス `/dir`）スラッシュコマンド登録。
   - [x] 隠しファイル（`.git` 等）の除外・配慮処理。
   - [x] 単体テストおよび動作確認。
-- **Step 3-2b: `/cd` 引数に対するフォルダー補完（`addAutocompleteProvider`）の実装（← 次の着手対象）**:
-  - [ ] Pi SDK 公式拡張 API `ctx.ui.addAutocompleteProvider` のハンドラー実装。
-  - [ ] 入力バッファが `/cd ` または `/cd <path>` の場合に、現在フォルダー直下のサブフォルダー一覧を補完候補として動的提示。
-  - [ ] Tabキーまたは確定時のパス補完適用（末尾スラッシュの付与等）。
-  - [ ] 動作確認と検証。
-- **Step 3-3: DocumentType によるフォルダー・ファイル自動分類**:
+- **Step 3-2b: `/cd` 引数に対するフォルダー補完（`addAutocompleteProvider`）の実装（✔ 完了）**:
+  - [x] Pi SDK 公式拡張 API `ctx.ui.addAutocompleteProvider` のハンドラー実装。
+  - [x] 入力バッファが `/cd ` または `/cd <path>` の場合に、現在フォルダー直下のサブフォルダー一覧を補完候補として動的提示。
+  - [x] Tabキーまたは確定時のパス補完適用（末尾スラッシュの付与等）。
+  - [x] 動作確認と検証。
+- **Step 3-3: DocumentType によるフォルダー・ファイル自動分類（← 次の着手対象）**:
   - [ ] `wiki/setting`, `plot`, `novel/episode` のフォルダー・ファイル判定ロジックの実装。
   - [ ] Pi SDK内蔵の `parseFrontmatter` を活用したメタデータ抽出の実装。
   - [ ] （オプション）あいまいフォルダー検索の実装。
