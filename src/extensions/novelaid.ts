@@ -74,7 +74,25 @@ export function createNovelaidExtension(options?: {
         },
       });
 
-      // 4. 小説執筆補助のステータスコマンド (/novelaid-info)
+      // 4. ファイル・フォルダー一覧表示コマンド (/ls, /dir)
+      const listHandler = async (args: string | undefined, ctx: { ui: { notify: (msg: string, type?: "info" | "warning" | "error") => void } }) => {
+        const target = args?.trim();
+        const result = navigator.listEntries(target);
+        const formatted = navigator.formatEntries(result);
+        ctx.ui.notify(formatted, result.success ? "info" : "error");
+      };
+
+      api.registerCommand("ls", {
+        description: "現在の作業フォルダー（または指定フォルダー）内の一覧を表示します",
+        handler: listHandler,
+      });
+
+      api.registerCommand("dir", {
+        description: "現在の作業フォルダー（または指定フォルダー）内の一覧を表示します（/ls のエイリアス）",
+        handler: listHandler,
+      });
+
+      // 5. 小説執筆補助のステータスコマンド (/novelaid-info)
       api.registerCommand("novelaid-info", {
         description: "novelaid-cli の概要と執筆支援ステータスを表示します",
         handler: async (_args, ctx) => {
@@ -83,6 +101,7 @@ export function createNovelaidExtension(options?: {
             `・作業フォルダー: [${navigator.getRelativeDir()}]\n` +
             `・書庫ルート: ${navigator.rootDir}\n` +
             "・フォルダー移動: /cd <パス>（ルート上限保護あり）\n" +
+            "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
             "・モデル管理: /model で選択可能",
             "info"
