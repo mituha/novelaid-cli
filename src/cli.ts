@@ -7,15 +7,34 @@ import { main as runPiMain } from "@earendil-works/pi-coding-agent";
 import { initializeModelRuntime } from "./model-manager.js";
 import { startChatSession } from "./chat-session.js";
 import { createNovelaidExtension } from "./extensions/novelaid.js";
+import { resolveProjectDirectory } from "./workspace/index.js";
 
 async function main() {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
+
+  // プロジェクトフォルダーの解決
+  let projectDir: string;
+  let isCustomProject: boolean;
+  let args: string[];
+  try {
+    const resolved = resolveProjectDirectory(rawArgs);
+    projectDir = resolved.projectDir;
+    isCustomProject = resolved.isCustom;
+    args = resolved.remainingArgs;
+
+    // プロセス全体のカレントディレクトリを作業対象プロジェクトに設定
+    process.chdir(projectDir);
+  } catch (err: any) {
+    console.error(`エラー: ${err.message}`);
+    process.exit(1);
+  }
 
   // 1. --test モード: 単発の推論テスト
   if (args.includes("--test")) {
     console.log("=========================================");
     console.log("  novelaid-cli (小説執筆補助エージェント)  ");
     console.log("=========================================");
+    console.log(`プロジェクトフォルダー: ${projectDir} ${isCustomProject ? "(指定)" : "(デフォルト)"}`);
     console.log("Pi Coding Agent SDK ランタイムを初期化中...\n");
 
     const { runtime, lmStudioStatus } = await initializeModelRuntime();
