@@ -86,7 +86,7 @@ export function createNovelaidExtension(options?: {
 
       // 3. ディレクトリ移動コマンド (/cd [パス])
       api.registerCommand("cd", {
-        description: "作業フォルダーを移動します（例: /cd 10_novels, /cd ..）",
+        description: "作業フォルダーを移動します（例: /cd 10_novels, /cd novel, /cd plot, /cd wiki, /cd ..）",
         handler: async (args, ctx) => {
           const target = args?.trim();
           const result = navigator.changeDirectory(target);
@@ -127,7 +127,7 @@ export function createNovelaidExtension(options?: {
             "【novelaid-cli】小説執筆補助エージェント (Pi SDK Native Extension)\n" +
             `・作業フォルダー: [${displayRel}] (${docType})\n` +
             `・書庫ルート: ${navigator.rootDir}\n` +
-            "・フォルダー移動: /cd <パス>（ルート上限保護・Tab補完対応）\n" +
+            "・フォルダー移動: /cd <パス | novel | plot | wiki>（セマンティックジャンプ・Tab補完対応）\n" +
             "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
             "・AI文脈連携: 作業フォルダーとDocumentTypeを自動注入\n" +

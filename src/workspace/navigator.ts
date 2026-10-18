@@ -38,6 +38,8 @@ export interface FolderSuggestionResult {
   prefix: string;
 }
 
+export type SemanticCategory = "novel" | "plot" | "wiki" | "setting" | "root";
+
 /**
  * ファイルサイズを人間が読みやすい形式に整形
  */
@@ -160,6 +162,58 @@ export class WorkspaceNavigator {
   }
 
   /**
+   * プロジェクト内のセマンティックフォルダーを探索
+   * @param category カテゴリ名 ("novel" | "plot" | "wiki" | "setting" | "root")
+   */
+  findSemanticDirectory(category: SemanticCategory): string | null {
+    if (category === "root") {
+      return this.rootDir;
+    }
+
+    let pattern: RegExp;
+    if (category === "novel") {
+      pattern = /novel|小説/i;
+    } else if (category === "plot") {
+      pattern = /plot|プロット/i;
+    } else {
+      // wiki or setting
+      pattern = /setting|設定|wiki|資料/i;
+    }
+
+    try {
+      // 1. ルート直下のフォルダーを走査
+      const rootEntries = fs.readdirSync(this.rootDir, { withFileTypes: true });
+      for (const ent of rootEntries) {
+        if (!ent.isDirectory() || ent.name.startsWith(".")) continue;
+        if (pattern.test(ent.name)) {
+          return path.join(this.rootDir, ent.name);
+        }
+      }
+
+      // 2. ルート直下で見つからなければ、深度2まで走査
+      for (const ent of rootEntries) {
+        if (!ent.isDirectory() || ent.name.startsWith(".")) continue;
+        const subDir = path.join(this.rootDir, ent.name);
+        try {
+          const subEntries = fs.readdirSync(subDir, { withFileTypes: true });
+          for (const sub of subEntries) {
+            if (!sub.isDirectory() || sub.name.startsWith(".")) continue;
+            if (pattern.test(sub.name)) {
+              return path.join(subDir, sub.name);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  }
+
+  /**
    * ディレクトリを変更する
    * @param targetInput 移動先パス（未指定の場合はプロジェクトルートへ復帰）
    */
@@ -176,7 +230,34 @@ export class WorkspaceNavigator {
     }
 
     const trimmed = targetInput.trim();
-    const candidatePath = path.resolve(this.currentDir, trimmed);
+
+    // セマンティックキーワード判定（例: "novel", "novel 01_第1巻", "plot", "wiki", "setting", "root"）
+    const semanticMatch = trimmed.match(/^([a-zA-Z0-9_-]+)(?:[\s/]+(.*))?$/);
+    const semanticToken = semanticMatch ? (semanticMatch[1]?.toLowerCase() as SemanticCategory) : undefined;
+    const isSemanticKey = semanticToken && ["novel", "plot", "wiki", "setting", "root"].includes(semanticToken);
+
+    let candidatePath: string;
+    let isSemanticJump = false;
+
+    // 通常の相対パス候補
+    const normalCandidate = path.resolve(this.currentDir, trimmed);
+
+    // カレント直下に指定と同名の実フォルダーが存在する場合は通常相対移動を優先
+    if (fs.existsSync(normalCandidate)) {
+      candidatePath = normalCandidate;
+    } else if (isSemanticKey && semanticToken) {
+      // セマンティックフォルダー探索
+      const baseSemanticDir = this.findSemanticDirectory(semanticToken);
+      if (baseSemanticDir) {
+        isSemanticJump = true;
+        const subPath = semanticMatch?.[2]?.trim();
+        candidatePath = subPath ? path.resolve(baseSemanticDir, subPath) : baseSemanticDir;
+      } else {
+        candidatePath = normalCandidate;
+      }
+    } else {
+      candidatePath = normalCandidate;
+    }
 
     // 2. ルート上限ガード（プロジェクトルートより外側への脱出を防止）
     if (!this.isWithinRoot(candidatePath)) {
@@ -214,6 +295,24 @@ export class WorkspaceNavigator {
     // 5. 成功：現在位置を更新
     this.currentDir = candidatePath;
     const rel = this.getRelativeDir();
+
+    if (isSemanticJump && semanticToken) {
+      const jumpLabels: Record<SemanticCategory, string> = {
+        novel: "小説本文フォルダー",
+        plot: "プロットフォルダー",
+        wiki: "設定フォルダー",
+        setting: "設定フォルダー",
+        root: "プロジェクトルート",
+      };
+      const label = jumpLabels[semanticToken] || "セマンティックフォルダー";
+      return {
+        success: true,
+        currentDir: this.currentDir,
+        relativeDir: rel,
+        message: `[ジャンプ] ${label}に移動しました: [${rel}]`,
+      };
+    }
+
     return {
       success: true,
       currentDir: this.currentDir,
@@ -401,10 +500,37 @@ export class WorkspaceNavigator {
         }
       }
 
-      // ソート（.. は先頭、それ以外は名前順）
+      // セマンティック予約語の補完候補（引数の第1階層入力時のみ提示）
+      if (searchDirRel === "") {
+        const semanticKeywords: Array<{ name: SemanticCategory; desc: string }> = [
+          { name: "novel", desc: "[ジャンプ] 小説本文フォルダー" },
+          { name: "plot", desc: "[ジャンプ] プロットフォルダー" },
+          { name: "wiki", desc: "[ジャンプ] 設定・世界観フォルダー" },
+          { name: "setting", desc: "[ジャンプ] 設定・世界観フォルダー" },
+          { name: "root", desc: "[ジャンプ] プロジェクトルート" },
+        ];
+
+        for (const kw of semanticKeywords) {
+          // 実フォルダー名と重複しない場合、かつ prefix に一致する場合に追加
+          const alreadyExists = suggestions.some((s) => s.name.toLowerCase() === kw.name);
+          if (!alreadyExists && (prefix === "" || kw.name.startsWith(prefix.toLowerCase()))) {
+            suggestions.push({
+              name: kw.name,
+              path: `${kw.name}/`,
+              description: kw.desc,
+            });
+          }
+        }
+      }
+
+      // ソート（.. は最優先、次にセマンティック候補、それ以外は名前順）
       suggestions.sort((a, b) => {
         if (a.name === "..") return -1;
         if (b.name === "..") return 1;
+        const aIsSemantic = a.description?.startsWith("[ジャンプ]");
+        const bIsSemantic = b.description?.startsWith("[ジャンプ]");
+        if (aIsSemantic && !bIsSemantic) return -1;
+        if (!aIsSemantic && bIsSemantic) return 1;
         return a.name.localeCompare(b.name, "ja");
       });
 
