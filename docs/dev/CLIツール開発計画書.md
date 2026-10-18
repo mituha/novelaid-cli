@@ -28,9 +28,10 @@
 |---|---|---|
 | **コアエンジン** | `@earendil-works/pi-coding-agent` (v1.3.0) | `createAgentSession` によるエージェントライフサイクル管理、イベント購読、モデルプロバイダー連携 |
 | **モデル管理・ランタイム** | `ModelRuntime` / `ModelRegistry` (Pi SDK内蔵) | プロバイダー登録（LM Studio等の互換エンドポイント）、モデル一覧の動的取得・リフレッシュ、接続・認証ヘルスチェック（`checkAuth`）、実行時モデル変更（`session.setModel`） |
-| **コマンド管理** | `CommandRegistry`（自前実装） | 宣言的コマンド定義、ディスパッチ、自動ヘルプ生成（一覧・詳細）。詳細は [CLIコマンド管理仕様書.md](./CLIコマンド管理仕様書.md) 参照 |
+| **拡張・コマンド機構** | Pi SDK `ExtensionAPI` / `InlineExtension` | SDK標準のスラッシュコマンド登録（`registerCommand`）、ライフサイクルフック（`before_agent_start`等）。詳細は [Pi_Coding_Agent_SDK仕様調査書.md](./Pi_Coding_Agent_SDK仕様調査書.md) および [CLIコマンド管理仕様書.md](./CLIコマンド管理仕様書.md) 参照 |
 | **セッション管理** | `SessionManager` (Pi SDK内蔵) | 会話履歴の永続化およびブランチ管理（インメモリ / ファイル永続化の選択） |
-| **ターミナルUI** | `@earendil-works/pi-tui` (v1.3.0) / SDKイベント | ストリーミング表示（`text_delta`）、Markdown描画、プロンプト入力受付 |
+| **ターミナルUI** | `InteractiveMode` (@earendil-works/pi-tui) / `readline` | SDK標準フルTUI（Markdown描画、入力欄、ダイアログ）を主軸とし、軽量readline/printモードとのハイブリッド構成 |
+| **リソース管理** | `DefaultResourceLoader` (Pi SDK内蔵) | `AGENTS.md`（小説執筆指針）の自動読み込み、スキル（`SKILL.md`）の自動探索とプロンプト展開 |
 | **ランタイム基盤** | Node.js (v24+) / TypeScript (v5+) | 実行環境、型安全性確保、ESMモジュール構成 |
 
 ### 2.2 アーキテクチャ概要図
