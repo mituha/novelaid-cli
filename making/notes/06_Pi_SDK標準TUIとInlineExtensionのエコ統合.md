@@ -55,7 +55,7 @@ flowchart TD
 
     subgraph "Pi SDK 標準フルTUI + InlineExtension (エコ統合)"
         TUI["InteractiveMode (公式フルTUI)"]
-        EXT["InlineExtension (novel-aid)"]
+        EXT["InlineExtension (novelaid)"]
         TUI -->|"内蔵"| AG["AGENTS.md 自動読み込み"]
         TUI -->|"内蔵"| SK[".pi/skills/ 自動読み込み"]
         TUI -->|"内蔵"| MOD["対話型 /model セレクター"]
@@ -81,14 +81,14 @@ flowchart TD
 
 ## 4. 実装：InlineExtensionとハイブリッドエントリーポイント
 
-### 1. `InlineExtension` プラグインの作成（`src/extensions/novel-aid.ts`）
+### 1. `InlineExtension` プラグインの作成（`src/extensions/novelaid.ts`）
 SDKの `ExtensionAPI` を使い、起動時にLM Studioの稼働状況をチェックしてモデルを動的登録する拡張プラグインを構築しました。
 
 ```typescript
 import { ExtensionAPI, ExtensionFactory } from "@mariozechner/pi-coding-agent";
 import { ModelManager } from "../model-manager.js";
 
-export function createNovelAidExtension(): ExtensionFactory {
+export function createNovelaidExtension(): ExtensionFactory {
   return async (api: ExtensionAPI) => {
     const modelManager = new ModelManager();
     const lmModels = await modelManager.detectLMStudioModels();
@@ -130,7 +130,7 @@ Pi Coding Agent SDKの `main(args, { extensionFactories })` を直接呼び出�
 
 ```typescript
 import { main } from "@mariozechner/pi-coding-agent";
-import { createNovelAidExtension } from "./extensions/novel-aid.js";
+import { createNovelaidExtension } from "./extensions/novelaid.js";
 
 // 引数判定
 if (args.includes("--test")) {
@@ -140,7 +140,7 @@ if (args.includes("--test")) {
 } else {
   // Pi SDK 公式フルTUI (InteractiveMode) を起動！
   await main(process.argv.slice(2), {
-    extensionFactories: [createNovelAidExtension()],
+    extensionFactories: [createNovelaidExtension()],
   });
 }
 ```

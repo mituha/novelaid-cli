@@ -40,3 +40,13 @@
   - プロジェクト内リソースへのリンクは、ファイル間相対パス（例: `../../docs/dev/〇〇.md` や `./00_はじめに.md`）を使用してください。
 * **外部プロジェクト参照の相対パス指定**:
   - 他の外部プロジェクトを参照する場合は、暫定的にプロジェクトが同一階層（同一親ディレクトリ）にあるものとして相対パス（例: `../<project-name>/...`）で記述してください。
+
+---
+
+## 4. プロジェクト名称「novelaid」の単一単語原則
+
+* `novelaid` は造語ですが、**1つの単語**として扱います。
+* ファイル名、モジュール名、変数名、関数名等において、`novel-aid`（ケバブケース）や `novelAid`（キャメルケース）のように**分割してはなりません**。
+  - 〇 正しい例: `novelaid.ts`, `createNovelaidExtension`, `novelaidExtension`, `/novelaid-info`
+  - ✕ 誤った例: `novel-aid.ts`, `createNovelAidExtension`, `novelAidExtension`
+

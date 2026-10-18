@@ -5,7 +5,7 @@ import { fetchLmStudioModels, DEFAULT_LM_STUDIO_URL } from "../model-manager.js"
  * novelaid-cli 小説執筆補助 InlineExtension
  * Pi Coding Agent SDK の標準機能と統合する拡張機能プラグイン
  */
-export function createNovelAidExtension(options?: { lmStudioUrl?: string }): InlineExtension {
+export function createNovelaidExtension(options?: { lmStudioUrl?: string }): InlineExtension {
   const lmStudioUrl = options?.lmStudioUrl || DEFAULT_LM_STUDIO_URL;
 
   return {

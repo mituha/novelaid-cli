@@ -6,7 +6,7 @@
 import { main as runPiMain } from "@earendil-works/pi-coding-agent";
 import { initializeModelRuntime } from "./model-manager.js";
 import { startChatSession } from "./chat-session.js";
-import { createNovelAidExtension } from "./extensions/novel-aid.js";
+import { createNovelaidExtension } from "./extensions/novelaid.js";
 
 async function main() {
   const args = process.argv.slice(2);
@@ -72,9 +72,9 @@ async function main() {
 
   // 3. 通常起動: Pi Coding Agent SDK 標準フルTUI（InteractiveMode）
   // 小説執筆専用の InlineExtension を注入して起動
-  const novelAidExtension = createNovelAidExtension();
+  const novelaidExtension = createNovelaidExtension();
   await runPiMain(args, {
-    extensionFactories: [novelAidExtension],
+    extensionFactories: [novelaidExtension],
   });
 }
 
