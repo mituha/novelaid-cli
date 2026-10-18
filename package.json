@@ -1,0 +1,32 @@
+{
+  "name": "novelaid-cli",
+  "version": "0.1.0",
+  "description": "Novel writing assistant powered by Pi Coding Agent SDK",
+  "type": "module",
+  "bin": {
+    "novelaid": "./bin/novelaid.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "novel",
+    "assistant",
+    "ai",
+    "agent",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^1.3.0",
+    "@earendil-works/pi-tui": "^1.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

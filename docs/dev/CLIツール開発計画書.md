@@ -82,14 +82,15 @@ flowchart LR
     S3 --> S4[Step 4: 動作検証と調整]
 ```
 
-### Step 1: プロジェクト基盤のセットアップ
-- `package.json` の作成とESM（`"type": "module"`）設定。
-- TypeScript設定（`tsconfig.json`）の整備。
-- 依存関係のインストール:
-  - `@earendil-works/pi-coding-agent`
-  - `@earendil-works/pi-tui`
+### Step 1: プロジェクト基盤のセットアップ（✔ 完了）
+- [x] `.gitignore` の整備（`node_modules/`, `dist/` の除外設定）
+- [x] `package.json` の作成とESM（`"type": "module"`）設定。
+- [x] TypeScript設定（`tsconfig.json`）の整備。
+- [x] 依存関係のインストール:
+  - `@earendil-works/pi-coding-agent` (v1.3.0)
+  - `@earendil-works/pi-tui` (v1.3.0)
   - `typescript`, `@types/node`, `tsx`（開発時実行用）
-- ビルドスクリプトおよびCLI起動エントリーポイント（`src/cli.ts`, `bin/novelaid.js`）の枠組み作成。
+- [x] ビルドスクリプトおよびCLI起動エントリーポイント（`src/cli.ts`, `bin/novelaid.js`）の作成と疎通確認。
 
 ### Step 2: Pi SDKセッション連携とCLI対話UIの実装
 - `createAgentSession()` を用いたセッション初期化処理の実装。

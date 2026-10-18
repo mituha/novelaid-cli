@@ -37,3 +37,11 @@ publish.html
 
 .obsidian
 .novelaid
+
+# Node / TypeScript
+node_modules/
+dist/
+
+# Allow Node.js bin directory
+!bin/
+!bin/**
