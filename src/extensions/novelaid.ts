@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { ExtensionAPI, InlineExtension } from "@earendil-works/pi-coding-agent";
 import {
   type AutocompleteItem,
@@ -13,7 +14,15 @@ import { WorkspaceNavigator, type NovelaidDocumentType } from "../workspace/inde
 export function getPersonaGuideline(docType: NovelaidDocumentType): string {
   switch (docType) {
     case "novel":
-      return "The current workspace is for novel manuscript. Focus on literary expression, prose rhythm, dialogue, descriptive details, and emotional depth.";
+      return [
+        "The current workspace is for novel manuscript. Focus on literary expression, prose rhythm, dialogue, descriptive details, and emotional depth.",
+        "When asked to add ruby/furigana (ルビ振り) or refine text, use the standard format: |親文字《ルビ》 (e.g. |躊躇《ちゅうちょ》, |刹那《せつな》, |本気《マジ》).",
+        "Rules for ruby:",
+        "- Target difficult kanji, character/place names, and ateji (当て字).",
+        "- Apply ruby only to the first appearance of the word in the chapter.",
+        "- Never add ruby if the word already has ruby.",
+        "- Use the 'edit' tool to apply changes directly to the manuscript file with diff confirmation.",
+      ].join("\n");
     case "markdown":
       return "The current workspace is for plot, world settings, characters, or research notes. Focus on logical consistency, cause-and-effect, foreshadowing, and structured outlines.";
     case "chat":
@@ -130,10 +139,67 @@ export function createNovelaidExtension(options?: {
             "・フォルダー移動: /cd <パス | novel | plot | wiki>（セマンティックジャンプ・Tab補完対応）\n" +
             "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
+            "・ルビ自動設定: /ruby [ファイル名] (novelaid-ruby 準拠)\n" +
             "・AI文脈連携: 作業フォルダーとDocumentTypeを自動注入\n" +
             "・モデル管理: /model で選択可能",
             "info"
           );
+        },
+      });
+
+      // 6. ルビ自動設定支援コマンド (/ruby [ファイル名])
+      api.registerCommand("ruby", {
+        description: "原稿ファイルの難読漢字や固有名詞へのルビ振り支援（novelaid-ruby 準拠）を案内・開始します",
+        handler: async (args, ctx) => {
+          const target = args?.trim();
+          const currentRel = navigator.getRelativeDir();
+          const displayRel = !currentRel || currentRel === "." ? "(プロジェクトルート)" : currentRel;
+
+          let targetFile = target;
+          if (!targetFile) {
+            // カレントフォルダー内のファイル一覧から小説ファイルを探索
+            const list = navigator.listEntries();
+            const novelFile = list.entries.find(
+              (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
+            );
+            if (novelFile) {
+              targetFile = novelFile.name;
+            } else {
+              // カレントフォルダーにない場合、小説本文フォルダー(semantic 'novel')配下を自動探索
+              const novelFolder = navigator.findSemanticDirectory("novel");
+              if (novelFolder) {
+                const subList = navigator.listEntries(novelFolder);
+                const subNovel = subList.entries.find(
+                  (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
+                );
+                if (subNovel) {
+                  const relFolder = path.relative(navigator.getCurrentDir(), novelFolder).replace(/\\/g, "/");
+                  targetFile = relFolder ? `${relFolder}/${subNovel.name}` : subNovel.name;
+                }
+              }
+            }
+          }
+
+          if (targetFile) {
+            ctx.ui.notify(
+              `【ルビ自動設定支援】\n` +
+              `・対象原稿: [${targetFile}]（現在地: [${displayRel}]）\n` +
+              `・書式: |親文字《ルビ》 (novelaid-ruby / カクヨム・なろう・青空文庫形式)\n` +
+              `\n💡 AIに対話で指示してください:\n` +
+              `「${targetFile} の難読漢字と固有名詞にルビを振って」\n` +
+              `「${targetFile} の登場人物名にルビを付けて」\n` +
+              `※AIが原稿を読み込み、初出箇所へ安全に差分編集（edit）を提案します。`,
+              "info"
+            );
+          } else {
+            ctx.ui.notify(
+              `【ルビ自動設定支援】\n` +
+              `現在の作業フォルダー [${displayRel}] 内に小説原稿が見つかりませんでした。\n` +
+              `ファイル名を指定して実行してください（例: /ruby 第1話.txt）\n` +
+              `または /cd novel で原稿フォルダーへ移動してください。`,
+              "warning"
+            );
+          }
         },
       });
 
