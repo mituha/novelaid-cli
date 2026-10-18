@@ -17,15 +17,17 @@
 
 ## 2. 環境構築・作業タスク完了時の必須ワークフロー
 
-環境構築やシステム改善、各種作業の1ステップ（タスク）が完了するごとに、以下の3ステップをセットで実施してください。
+環境構築やシステム改善、各種作業の1ステップ（タスク）が完了するごとに、以下のステップをセットで実施してください。
 
-1. **開発仕様の反映（`docs/dev/`）**
+1. **コード変更時のバージョン更新（`package.json`）**
+   - ソースコード（`src/` 配下等）の追加・変更・改善を伴うタスクの完了時は、セマンティックバージョニング（SemVer: `MAJOR.MINOR.PATCH`）に従って `package.json` の `version` を更新します（機能追加は MINOR または PATCH、バグ修正・調整は PATCH）。
+2. **開発仕様の反映（`docs/dev/`）**
    - システム仕様やルール、スクリプトの設計に変更・追加がある場合は、`docs/dev/` 配下の仕様書を作成または更新します。
-2. **`novelaid-cli`動作の反映（`docs/manual/`）**
+3. **`novelaid-cli`動作の反映（`docs/manual/`）**
    - `novelaid-cli`の動作に変更や改善があった場合は、`docs/manual/` 配下のマニュアルを作成または更新します。
-3. **日次作業ログの記録（`making/logs/YYYY-MM-DD.md`）**
+4. **日次作業ログの記録（`making/logs/YYYY-MM-DD.md`）**
    - `.agents/scripts/sync-prompt-log.ps1`（Hookにより自動実行、または手動実行）によって抽出された「ユーザー入力プロンプト」セクションの直下に、AIが実施した**作業手順・変更ファイル・設計上の判断理由**を構造化して追記します。
-4. **メイキング記事の自動作成・更新（`making/notes/`）**
+5. **メイキング記事の自動作成・更新（`making/notes/`）**
    - `.agents/skills/making-note-writer/SKILL.md` スキルに従い、`making/logs/` と `making/dev/` の内容をもとに、該当テーマの投稿用記事（`making/notes/XX_タイトル.md`）を下書き・更新し、`making/notes/index.md` の目次を最新化します。
 
 ---
