@@ -1,6 +1,7 @@
 import * as readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 import { createAgentSession, type ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { createDefaultCommandRegistry, type CommandContext } from "./commands/index.js";
 
 export interface StartChatSessionOptions {
   runtime: ModelRuntime;
@@ -33,6 +34,29 @@ export async function startChatSession(options: StartChatSessionOptions): Promis
     model: selectedModel,
     noTools: "all", // 小説執筆の純粋な対話セッションとして開始
   });
+
+  // コマンドレジストリの生成
+  const registry = createDefaultCommandRegistry();
+  let isExitRequested = false;
+
+  const commandContext: CommandContext = {
+    session,
+    runtime,
+    requestExit: () => {
+      isExitRequested = true;
+    },
+    clearScreen: () => {
+      console.clear();
+    },
+    print: (message: string) => {
+      console.log(message);
+    },
+    currentModel: {
+      id: selectedModel.id,
+      name: selectedModel.name,
+      contextWindow: selectedModel.contextWindow,
+    },
+  };
 
   let isAssistantResponding = false;
 
@@ -78,34 +102,14 @@ export async function startChatSession(options: StartChatSessionOptions): Promis
         continue;
       }
 
-      // スラッシュコマンドの処理
+      // スラッシュコマンドの処理（CommandRegistry へ委譲）
       if (userInput.startsWith("/")) {
-        const cmd = userInput.toLowerCase();
-        if (cmd === "/exit" || cmd === "/quit") {
-          console.log("対話セッションを終了します。執筆お疲れ様でした！");
+        await registry.dispatch(userInput, commandContext);
+        if (isExitRequested) {
           break;
-        } else if (cmd === "/clear") {
-          console.clear();
-          rl.prompt();
-          continue;
-        } else if (cmd === "/help") {
-          console.log("\n【利用可能なコマンド】");
-          console.log("  /help   - このヘルプを表示");
-          console.log("  /model  - 現在使用中のモデル情報を表示");
-          console.log("  /clear  - 画面をクリア");
-          console.log("  /exit   - 対話セッションを終了\n");
-          rl.prompt();
-          continue;
-        } else if (cmd === "/model") {
-          console.log(`\n現在のモデル: ${selectedModel.name} (${selectedModel.id})`);
-          console.log(`コンテキスト窓: ${selectedModel.contextWindow.toLocaleString()} tokens\n`);
-          rl.prompt();
-          continue;
-        } else {
-          console.log(`未定義のコマンドです: ${userInput} （/help でコマンド一覧を確認できます）\n`);
-          rl.prompt();
-          continue;
         }
+        rl.prompt();
+        continue;
       }
 
       // ユーザーのプロンプトを AgentSession へ送信
