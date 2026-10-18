@@ -147,13 +147,13 @@ flowchart LR
   - [x] 入力バッファが `/cd ` または `/cd <path>` の場合に、現在フォルダー直下のサブフォルダー一覧を補完候補として動的提示。
   - [x] Tabキーまたは確定時のパス補完適用（末尾スラッシュの付与等）。
   - [x] 動作確認と検証。
-- **Step 3-3: DocumentType によるフォルダー・ファイル自動分類（← 次の着手対象）**:
-  - [ ] `NovelaidDocumentType` 型定義の作成（`src/workspace/types.ts`）。
-  - [ ] `.novelaidattributes` パーサー、ワイルドカード照合、キャッシュ機構の実装（`src/workspace/attributes.ts`）。
-  - [ ] `WorkspaceNavigator` への `getDocumentType`（ファイル種別判定）および `getDirectoryType`（フォルダー種別判定）の実装。
-  - [ ] Pi SDK `parseFrontmatter` を活用した YAML Front Matter メタデータ（`tags`）抽出の実装。
-  - [ ] 単体テストによる検証。
-- **Step 3-4: セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装**:
+- **Step 3-3: DocumentType によるフォルダー・ファイル自動分類（✔ 完了）**:
+  - [x] `NovelaidDocumentType` 型定義の作成（`src/workspace/types.ts`）。
+  - [x] `.novelaidattributes` パーサー、ワイルドカード照合、キャッシュ機構の実装（`src/workspace/attributes.ts`）。
+  - [x] `WorkspaceNavigator` への `getDocumentType`（ファイル種別判定）および `getDirectoryType`（フォルダー種別判定）の実装。
+  - [x] YAML Front Matter メタデータ（`tags`）抽出パーサーの実装（`src/workspace/frontmatter.ts`）。
+  - [x] 単体テストによる包括検証（全テストケース合格）。
+- **Step 3-4: セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装（← 次の着手対象）**:
   - [ ] 分類情報に基づく各カテゴリへのクイック移動・参照コマンドの実装。
   - [ ] （後回し検討）あいまい検索による移動機能。
 - **Step 3-5: 小説執筆特化 `AGENTS.md` の設計と自動読み込み**:

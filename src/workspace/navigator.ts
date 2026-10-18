@@ -1,5 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { NovelaidDocumentType, DocumentMetadata } from "./types.js";
+import { NovelaidAttributesManager } from "./attributes.js";
+import { parseFrontmatter } from "./frontmatter.js";
 
 export interface NavigationResult {
   success: boolean;
@@ -12,6 +15,7 @@ export interface NavigationResult {
 export interface FileEntry {
   name: string;
   isDirectory: boolean;
+  documentType?: NovelaidDocumentType;
   size?: number;
 }
 
@@ -49,11 +53,13 @@ export function formatFileSize(bytes: number): string {
  */
 export class WorkspaceNavigator {
   readonly rootDir: string;
+  readonly attributesManager: NovelaidAttributesManager;
   private currentDir: string;
 
   constructor(rootDir: string, initialDir?: string) {
     this.rootDir = path.resolve(rootDir);
     this.currentDir = initialDir ? path.resolve(initialDir) : this.rootDir;
+    this.attributesManager = new NovelaidAttributesManager();
 
     // 初期ディレクトリの境界チェック
     if (!this.isWithinRoot(this.currentDir)) {
@@ -74,6 +80,83 @@ export class WorkspaceNavigator {
   getRelativeDir(): string {
     const rel = path.relative(this.rootDir, this.currentDir);
     return rel === "" ? "." : rel.replace(/\\/g, "/");
+  }
+
+  /**
+   * ファイルパスからドキュメントタイプ（NovelaidDocumentType）を判定
+   */
+  getDocumentType(filePath: string): NovelaidDocumentType {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.ch') return 'chat';
+    if (ext === '.css') return 'css';
+    if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)) {
+      return 'image';
+    }
+    if (ext === '.txt') return 'novel';
+    if (ext !== '.md' && ext !== '.markdown') return 'unknown';
+
+    // マークダウンファイルに対する .novelaidattributes の判定
+    const resolvedPath = path.resolve(filePath);
+    const dirPath = path.dirname(resolvedPath);
+    const fileName = path.basename(resolvedPath);
+
+    const attrType = this.attributesManager.resolveFileType(dirPath, fileName);
+    if (attrType) {
+      return attrType as NovelaidDocumentType;
+    }
+
+    return 'markdown';
+  }
+
+  /**
+   * ディレクトリパスから優先ドキュメントタイプ（NovelaidDocumentType）を判定
+   * 1. 自身の .novelaidattributes (`./`)
+   * 2. 親の .novelaidattributes (`dirName/`)
+   * 3. フォルダー名のキーワード判定 (novel/小説, 設定/プロット/資料/wiki, image/画像, chat/チャット/channel/チャンネル)
+   * 4. 親フォルダーからの再帰継承
+   * 5. デフォルト: 'novel'
+   */
+  getDirectoryType(dirPath?: string): NovelaidDocumentType {
+    const resolvedDir = dirPath ? path.resolve(dirPath) : this.currentDir;
+
+    // 1. 自身の ./ または親からの dirName/ による判定
+    const attrType = this.attributesManager.resolveDirectoryType(resolvedDir);
+    if (attrType) {
+      return attrType as NovelaidDocumentType;
+    }
+
+    // 2. キーワードによる判定
+    const dirName = path.basename(resolvedDir).toLowerCase();
+    const novelKeywords = ['novel', '小説'];
+    const markdownKeywords = ['設定', 'プロット', '資料', 'wiki'];
+    const imageKeywords = ['image', '画像'];
+    const chatKeywords = ['chat', 'チャット', 'channel', 'チャンネル'];
+
+    if (novelKeywords.some((kw) => dirName.includes(kw))) return 'novel';
+    if (markdownKeywords.some((kw) => dirName.includes(kw))) return 'markdown';
+    if (imageKeywords.some((kw) => dirName.includes(kw))) return 'image';
+    if (chatKeywords.some((kw) => dirName.includes(kw))) return 'chat';
+
+    // 3. 親フォルダーの継承（プロジェクトルート上限まで）
+    const parentPath = path.dirname(resolvedDir);
+    if (parentPath !== resolvedDir && this.isWithinRoot(parentPath) && parentPath !== this.rootDir) {
+      return this.getDirectoryType(parentPath);
+    }
+
+    // 4. デフォルト
+    return 'novel';
+  }
+
+  /**
+   * ファイルから YAML Front Matter メタデータを抽出
+   */
+  parseDocumentMetadata(filePath: string): DocumentMetadata {
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return parseFrontmatter(content).metadata;
+    } catch {
+      return {};
+    }
   }
 
   /**
@@ -195,14 +278,18 @@ export class WorkspaceNavigator {
         // 隠しファイル・フォルダーは除外
         if (ent.name.startsWith(".")) continue;
 
+        const fullPath = path.join(targetPath, ent.name);
+
         if (ent.isDirectory()) {
-          dirs.push({ name: ent.name, isDirectory: true });
+          const docType = this.getDirectoryType(fullPath);
+          dirs.push({ name: ent.name, isDirectory: true, documentType: docType });
         } else if (ent.isFile()) {
+          const docType = this.getDocumentType(fullPath);
           try {
-            const fileStat = fs.statSync(path.join(targetPath, ent.name));
-            files.push({ name: ent.name, isDirectory: false, size: fileStat.size });
+            const fileStat = fs.statSync(fullPath);
+            files.push({ name: ent.name, isDirectory: false, documentType: docType, size: fileStat.size });
           } catch {
-            files.push({ name: ent.name, isDirectory: false });
+            files.push({ name: ent.name, isDirectory: false, documentType: docType });
           }
         }
       }
@@ -243,11 +330,12 @@ export class WorkspaceNavigator {
 
     const lines: string[] = [`📂 フォルダー: [${result.relativeDir}] (合計: ${total}件)`];
     for (const ent of result.entries) {
+      const typeTag = ent.documentType ? `[${ent.documentType}] ` : "";
       if (ent.isDirectory) {
-        lines.push(`  📁 [DIR]  ${ent.name}/`);
+        lines.push(`  📁 [DIR]  ${ent.name}/ (${ent.documentType || 'unknown'})`);
       } else {
         const sizeStr = ent.size !== undefined ? ` (${formatFileSize(ent.size)})` : "";
-        lines.push(`  📄 [FILE] ${ent.name}${sizeStr}`);
+        lines.push(`  📄 ${typeTag}${ent.name}${sizeStr}`);
       }
     }
     return lines.join("\n");
