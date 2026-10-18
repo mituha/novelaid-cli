@@ -148,9 +148,11 @@ flowchart LR
   - [x] Tabキーまたは確定時のパス補完適用（末尾スラッシュの付与等）。
   - [x] 動作確認と検証。
 - **Step 3-3: DocumentType によるフォルダー・ファイル自動分類（← 次の着手対象）**:
-  - [ ] `wiki/setting`, `plot`, `novel/episode` のフォルダー・ファイル判定ロジックの実装。
-  - [ ] Pi SDK内蔵の `parseFrontmatter` を活用したメタデータ抽出の実装。
-  - [ ] （オプション）あいまいフォルダー検索の実装。
+  - [ ] `NovelaidDocumentType` 型定義の作成（`src/workspace/types.ts`）。
+  - [ ] `.novelaidattributes` パーサー、ワイルドカード照合、キャッシュ機構の実装（`src/workspace/attributes.ts`）。
+  - [ ] `WorkspaceNavigator` への `getDocumentType`（ファイル種別判定）および `getDirectoryType`（フォルダー種別判定）の実装。
+  - [ ] Pi SDK `parseFrontmatter` を活用した YAML Front Matter メタデータ（`tags`）抽出の実装。
+  - [ ] 単体テストによる検証。
 - **Step 3-4: セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装**:
   - [ ] 分類情報に基づく各カテゴリへのクイック移動・参照コマンドの実装。
   - [ ] （後回し検討）あいまい検索による移動機能。
