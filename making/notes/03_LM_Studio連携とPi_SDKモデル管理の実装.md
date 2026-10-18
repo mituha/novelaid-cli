@@ -57,10 +57,10 @@ LM Studio のローカルサーバー（デフォルト: `http://localhost:1234/
 
 ```mermaid
 flowchart TD
-    LM[LM Studio サーバー<br/>http://localhost:1234/v1] -->|1. GET /models| MM[model-manager.ts]
-    MM -->|2. ProviderChatModelConfig変換| MR[Pi SDK ModelRuntime]
-    MR -->|3. registerProvider('lm-studio')| MR
-    MR -->|4. getModels / completeSimple| CLI[novelaid-cli]
+    LM[LM Studio サーバー<br/>http://localhost:1234/v1] -->|"1. GET /models"| MM[model-manager.ts]
+    MM -->|"2. ProviderChatModelConfig変換"| MR[Pi SDK ModelRuntime]
+    MR -->|"3. registerProvider('lm-studio')"| MR
+    MR -->|"4. getModels / completeSimple"| CLI[novelaid-cli]
 ```
 
 ```typescript
