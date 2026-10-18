@@ -153,7 +153,11 @@ flowchart LR
   - [x] `WorkspaceNavigator` への `getDocumentType`（ファイル種別判定）および `getDirectoryType`（フォルダー種別判定）の実装。
   - [x] YAML Front Matter メタデータ（`tags`）抽出パーサーの実装（`src/workspace/frontmatter.ts`）。
   - [x] 単体テストによる包括検証（全テストケース合格）。
-- **Step 3-4: セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装（← 次の着手対象）**:
+- **Step 3-3b: 現在地およびDocumentTypeのAIコンテキスト動的注入（← 次の着手対象）**:
+  - [ ] Pi SDK の `before_agent_start` イベントフックによる動的プロンプト注入の実装。
+  - [ ] 現在の作業フォルダー、`NovelaidDocumentType`、役割ガイドラインを含む `<novelaid_workspace>` セクションの生成。
+  - [ ] 動作確認・テストの実施。
+- **Step 3-4: セマンティックショートカット（`/wiki`, `/plot`, `/novel`）の実装**:
   - [ ] 分類情報に基づく各カテゴリへのクイック移動・参照コマンドの実装。
   - [ ] （後回し検討）あいまい検索による移動機能。
 - **Step 3-5: 小説執筆特化 `AGENTS.md` の設計と自動読み込み**:
