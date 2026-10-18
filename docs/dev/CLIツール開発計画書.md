@@ -27,6 +27,7 @@
 | コンポーネント | パッケージ名 / 技術 | 役割・活用内容 |
 |---|---|---|
 | **コアエンジン** | `@earendil-works/pi-coding-agent` (v1.3.0) | `createAgentSession` によるエージェントライフサイクル管理、イベント購読、モデルプロバイダー連携 |
+| **モデル管理・ランタイム** | `ModelRuntime` / `ModelRegistry` (Pi SDK内蔵) | プロバイダー登録（LM Studio等の互換エンドポイント）、モデル一覧の動的取得・リフレッシュ、接続・認証ヘルスチェック（`checkAuth`）、実行時モデル変更（`session.setModel`） |
 | **セッション管理** | `SessionManager` (Pi SDK内蔵) | 会話履歴の永続化およびブランチ管理（インメモリ / ファイル永続化の選択） |
 | **ターミナルUI** | `@earendil-works/pi-tui` (v1.3.0) / SDKイベント | ストリーミング表示（`text_delta`）、Markdown描画、プロンプト入力受付 |
 | **ランタイム基盤** | Node.js (v24+) / TypeScript (v5+) | 実行環境、型安全性確保、ESMモジュール構成 |
@@ -38,16 +39,18 @@ flowchart TD
     User([ユーザー / 作家]) <--> CLI[novelaid-cli エントリーポイント]
     CLI <--> TUI[UI / 入力ループ (@earendil-works/pi-tui)]
     CLI <--> Session[AgentSession (@earendil-works/pi-coding-agent)]
+    CLI <--> MR[ModelRuntime / ModelRegistry (Pi SDK標準)]
     
     subgraph Pi Coding Agent SDK
         Session --> SM[SessionManager (履歴管理)]
         Session --> Engine[モデル推論 / イベントストリーム]
         Session --> Tools[執筆支援ツール群]
+        MR --> Session
     end
 
-    subgraph AI接続先（最優先対応）
-        Engine <--> Local[ローカル: LM Studio<br/>http://localhost:1234/v1]
-        Engine <--> Cloud[クラウド: Google Gemini<br/>GEMINI_API_KEY]
+    subgraph AI接続先（Pi SDKにより統一管理）
+        MR <--> Local[ローカル: LM Studio<br/>http://localhost:1234/v1]
+        MR <--> Cloud[クラウド: Google Gemini<br/>GEMINI_API_KEY]
     end
 
     subgraph 小説コンテキスト
@@ -56,29 +59,37 @@ flowchart TD
     end
 ```
 
-### 2.3 優先AIモデル接続先設計
+### 2.3 優先AIモデル接続先設計（Pi SDK標準機能の完全活用）
 
-本ツールでは、小説執筆支援というユースケースの特性（秘匿性・長文文脈）を鑑み、以下の2系統の接続先を最優先でサポートします。
+本ツールでは、小説執筆支援というユースケースの特性（秘匿性・長文文脈）を鑑み、以下の2系統の接続先を最優先でサポートします。独自通信ロジックは作成せず、すべて **Pi Coding Agent SDK の標準API（`ModelRuntime` / `ModelRegistry`）** を介して管理します。
 
 | 区分 | 接続先 | 接続方式 / 設定 | 小説執筆における主な役割とメリット |
 |---|---|---|---|
-| **ローカル（最優先）** | **LM Studio** | OpenAI互換API (`openai-completions`)<br/>Base URL: `http://localhost:1234/v1` | **完全プライベート＆日常の壁打ち**<br/>未公開の原稿やプロットが外部に漏れない安心感。トークン費用不要で日常的なアイデア出しやシーン描写の相談を素早く行える。 |
-| **外部クラウド（最優先）** | **Google Gemini** | ネイティブプロバイダー (`gemini`)<br/>認証: `GEMINI_API_KEY` | **超長文コンテキスト＆全編推敲**<br/>100万〜200万トークンの巨大コンテキスト窓を活かし、長編小説の全章・詳細な世界観設定・キャラクター辞書を一括参照した論理破綻や伏線回収の検証が可能。 |
+| **ローカル（最優先）** | **LM Studio** | SDKプロバイダー登録 (`openai-completions`)<br/>Base URL: `http://localhost:1234/v1` | **完全プライベート＆日常の壁打ち**<br/>未公開の原稿やプロットが外部に漏れない安心感。トークン費用不要で日常的なアイデア出しやシーン描写の相談を素早く行える。 |
+| **外部クラウド（最優先）** | **Google Gemini** | ネイティブプロバイダー (`google-gemini`)<br/>認証: `GEMINI_API_KEY` | **超長文コンテキスト＆全編推敲**<br/>100万〜200万トークンの巨大コンテキスト窓を活かし、長編小説の全章・詳細な世界観設定・キャラクター辞書を一括参照した論理破綻や伏線回収の検証が可能。 |
 
-#### ハイブリッド切り替え方針
-- CLI起動時オプション（例: `novelaid --model lm-studio` または `--model gemini`）や、対話中のコマンド（`/model`）でスムーズに切り替えられる構成とします。
-- プロトタイプ段階では、LM Studio 接続用設定（`models.json` 形式またはSDKオプション）と Gemini 接続設定（環境変数経由）の両方を初期構成として検証します。
+#### Pi SDKを活用したモデル制御の仕組み
+1. **プロバイダー登録とモデル取得**:
+   - `modelRuntime.registerProvider("lm-studio", { baseUrl: "http://localhost:1234/v1", api: "openai-completions", ... })`
+   - `await modelRuntime.refresh()` を呼ぶことで、LM Studio側で利用可能なモデル一覧（例: `qwen/qwen3-8b` など）をSDKが自動検出してカタログ化。
+2. **接続可能テスト（ヘルスチェック）**:
+   - `modelRuntime.checkAuth("lm-studio")` を呼び出すことで、サーバー起動状態と疎通をSDK標準機能として検証。
+3. **実行時モデル設定・変更**:
+   - 初期化: `createAgentSession({ modelRuntime, model: selectedModel })`
+   - 動的変更: `session.setModel(targetModel)`
+   - 切り替え: `session.cycleModel()`
 
 ---
 
 ## 3. 開発ステップ（WBS / 実装ロードマップ）
 
-プロトタイプの作成は、以下の4ステップで段階的に進めます。
+プロトタイプの作成は、以下のステップで小さく確実に進めます。
 
 ```mermaid
 flowchart LR
-    S1[Step 1: 環境基盤構築] --> S2[Step 2: SDK接続・基本対話ループ]
-    S2 --> S3[Step 3: 小説補助コンテキスト組込]
+    S1[Step 1: 環境基盤構築 ✔] --> S2_1[Step 2-1: SDKモデル接続テスト]
+    S2_1 --> S2_2[Step 2-2: セッション・対話UI実装]
+    S2_2 --> S3[Step 3: 小説補助コンテキスト組込]
     S3 --> S4[Step 4: 動作検証と調整]
 ```
 
@@ -92,18 +103,22 @@ flowchart LR
   - `typescript`, `@types/node`, `tsx`（開発時実行用）
 - [x] ビルドスクリプトおよびCLI起動エントリーポイント（`src/cli.ts`, `bin/novelaid.js`）の作成と疎通確認。
 
-### Step 2: Pi SDKセッション連携とCLI対話UIの実装
-- `createAgentSession()` を用いたセッション初期化処理の実装。
-- **優先モデル接続構成の組み込み**:
-  - ローカル（`LM Studio`: `http://localhost:1234/v1`, `openai-completions` API）
-  - クラウド（`Google Gemini`: `GEMINI_API_KEY`）
-- イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
+### Step 2-1: Pi SDK `ModelRuntime` によるモデル接続・一覧取得と疎通テスト（← 次の着手対象）
+- [ ] `src/model-manager.ts`（または `src/cli.ts`）に Pi SDK の `ModelRuntime` を組み込み。
+- [ ] LM Studio プロバイダーの登録（`modelRuntime.registerProvider`）。
+- [ ] `modelRuntime.refresh()` による LM Studio モデル一覧の取得・一覧表示。
+- [ ] `modelRuntime.checkAuth("lm-studio")` による接続可能テストの実施。
+- [ ] 接続成否に応じた適切なターミナル表示（成功時: モデル一覧、失敗時: トラブルシューティング案内）。
+
+### Step 2-2: Pi SDKセッション連携とCLI対話UIの実装
+- [ ] `createAgentSession()` を用いたセッション初期化処理の実装。
+- [ ] イベント購読（`session.subscribe`）によるリアルタイムストリーミング出力の実装:
   - `message_update` & `text_delta` による思考・テキストの順次描画。
   - `message_end` / `agent_settled` によるターン完了検知。
-- ターミナル入力受付（インタラクティブループ）の実装:
+- [ ] ターミナル入力受付（インタラクティブループ）の実装:
   - ユーザーからの指示入力 → `session.prompt()` の実行。
   - 特殊コマンド（`/exit`, `/clear`, `/help`, `/model` 等）のハンドリング。
-- 終了時のクリーンアップ処理（`session.dispose()`）。
+- [ ] 終了時のクリーンアップ処理（`session.dispose()`）。
 
 ### Step 3: 小説執筆補助の専門コンテキスト組み込み
 - 小説執筆補助に特化したシステムプロンプトの設計:
