@@ -163,7 +163,7 @@ flowchart LR
   - [x] `WorkspaceNavigator` へのセマンティックフォルダー自動探索・解決メソッドの実装。
   - [x] `/cd` コマンドおよび Tab 補完プロバイダーへのセマンティック候補（`novel`, `plot`, `wiki`, `setting`, `root`）の統合。
   - [x] 単体テストによる包括検証（全テストケース合格）。
-- **Step 3-5: AI対話による原稿ファイル書き換え実証（ルビ自動設定機能）（✔ 3-5a, 3-5b 完了）**:
+- **Step 3-5: AI対話による原稿ファイル書き換え実証（ルビ自動設定・校正推敲機能）（✔ 完了）**:
   ※詳細は [ルビ自動設定とファイル書き換え仕様書.md](./ルビ自動設定とファイル書き換え仕様書.md) を参照。
   - [x] **Step 3-5a: `novelaid-ruby` 構文の組み込みとルビ支援プロンプト/ツールの設計（✔ 完了）**:
     - 隣接リポジトリ `novelaid-ruby`（`../novelaid-ruby-ts`）のルビ記法規則（`|親文字《ルビ》`）を自立モジュール（`src/workspace/ruby.ts`）として実装。
@@ -173,8 +173,11 @@ flowchart LR
   - [x] **Step 3-5b: テスト原稿を用いた対話・ファイル書き換え実証テスト（✔ 完了）**:
     - `test-novel/10_novels/第1話_旅立ちの朝.txt` などのテスト原稿を作成。
     - Pi SDK の標準ツール（`read`, `edit`）による差分プレビュー・承認・ファイル永続化・冪等性（再適用時の保護）を E2E テスト（`scratch/test-ruby-rewrite-e2e.mjs`）で完全実証。
-  - [ ] **Step 3-5c: 誤字脱字チェック・文体校正への横展開**:
-    - 実証されたファイル書き換えパイプラインを、誤字脱字・表記揺れ修正や文体リズム推敲へ拡張。
+  - [x] **Step 3-5c: 誤字脱字チェック・文体校正への横展開（✔ 完了）**:
+    - `src/workspace/proofread.ts` に誤字・誤記・慣用句・重言・文末重複（「〜た」3連続）スキャナーを実装。
+    - `WorkspaceNavigator` に原稿ファイル補完（`getFileSuggestions`）を追加し、`/ruby`, `/proofread`, `/check` コマンドでTab補完を可能に。
+    - スラッシュコマンド `/proofread [ファイル名]`（エイリアス `/check`）および小説ペルソナへの校正・推敲指示を統合。
+    - 単体・E2Eテスト（`scratch/test-proofread-module.mjs`）による包括検証完了。
 
 ### Step 4: 動作確認と検証
 - 実際の対話シナリオによる動作検証（LM Studio および Gemini それぞれで確認）:

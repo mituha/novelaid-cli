@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import type { ExtensionAPI, InlineExtension } from "@earendil-works/pi-coding-agent";
 import {
@@ -6,7 +7,12 @@ import {
   type AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 import { fetchLmStudioModels, DEFAULT_LM_STUDIO_URL } from "../model-manager.js";
-import { WorkspaceNavigator, type NovelaidDocumentType } from "../workspace/index.js";
+import {
+  WorkspaceNavigator,
+  scanProofreadIssues,
+  formatProofreadSummary,
+  type NovelaidDocumentType,
+} from "../workspace/index.js";
 
 /**
  * ドキュメントタイプに応じたAI執筆ペルソナ・ガイドラインの取得
@@ -22,6 +28,10 @@ export function getPersonaGuideline(docType: NovelaidDocumentType): string {
         "- Apply ruby only to the first appearance of the word in the chapter.",
         "- Never add ruby if the word already has ruby.",
         "- Use the 'edit' tool to apply changes directly to the manuscript file with diff confirmation.",
+        "Rules for proofreading and refinement (校正・推敲):",
+        "- Detect typos, homophone errors (e.g. 以外/意外), broken idioms, and redundant expressions without altering the author's unique voice.",
+        "- Watch out for excessive consecutive past-tense sentence endings (〜た。〜た。〜た。) and suggest natural rhythm variations.",
+        "- Use the 'edit' tool to propose precise, minimal changes with diff confirmation.",
       ].join("\n");
     case "markdown":
       return "The current workspace is for plot, world settings, characters, or research notes. Focus on logical consistency, cause-and-effect, foreshadowing, and structured outlines.";
@@ -140,6 +150,7 @@ export function createNovelaidExtension(options?: {
             "・フォルダー一覧: /ls, /dir [パス]\n" +
             "・現在地表示: /pwd\n" +
             "・ルビ自動設定: /ruby [ファイル名] (novelaid-ruby 準拠)\n" +
+            "・校正・推敲支援: /proofread, /check [ファイル名] (誤字脱字・文末重複スキャン)\n" +
             "・AI文脈連携: 作業フォルダーとDocumentTypeを自動注入\n" +
             "・モデル管理: /model で選択可能",
             "info"
@@ -147,38 +158,49 @@ export function createNovelaidExtension(options?: {
         },
       });
 
+      // 対象原稿ファイルの特定ヘルパー（引数指定、カレント、または小説フォルダー自動探索）
+      const resolveNovelTarget = (args?: string): { targetFile?: string; resolvedPath?: string } => {
+        const target = args?.trim();
+        if (target) {
+          const directPath = path.resolve(navigator.getCurrentDir(), target);
+          return { targetFile: target, resolvedPath: fs.existsSync(directPath) ? directPath : undefined };
+        }
+
+        // カレントフォルダー内から探索
+        const list = navigator.listEntries();
+        const novelFile = list.entries.find(
+          (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
+        );
+        if (novelFile) {
+          const directPath = path.resolve(navigator.getCurrentDir(), novelFile.name);
+          return { targetFile: novelFile.name, resolvedPath: directPath };
+        }
+
+        // 小説本文フォルダー (semantic 'novel') から探索
+        const novelFolder = navigator.findSemanticDirectory("novel");
+        if (novelFolder) {
+          const subList = navigator.listEntries(novelFolder);
+          const subNovel = subList.entries.find(
+            (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
+          );
+          if (subNovel) {
+            const relFolder = path.relative(navigator.getCurrentDir(), novelFolder).replace(/\\/g, "/");
+            const targetName = relFolder ? `${relFolder}/${subNovel.name}` : subNovel.name;
+            const fullPath = path.resolve(novelFolder, subNovel.name);
+            return { targetFile: targetName, resolvedPath: fullPath };
+          }
+        }
+
+        return {};
+      };
+
       // 6. ルビ自動設定支援コマンド (/ruby [ファイル名])
       api.registerCommand("ruby", {
         description: "原稿ファイルの難読漢字や固有名詞へのルビ振り支援（novelaid-ruby 準拠）を案内・開始します",
         handler: async (args, ctx) => {
-          const target = args?.trim();
           const currentRel = navigator.getRelativeDir();
           const displayRel = !currentRel || currentRel === "." ? "(プロジェクトルート)" : currentRel;
-
-          let targetFile = target;
-          if (!targetFile) {
-            // カレントフォルダー内のファイル一覧から小説ファイルを探索
-            const list = navigator.listEntries();
-            const novelFile = list.entries.find(
-              (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
-            );
-            if (novelFile) {
-              targetFile = novelFile.name;
-            } else {
-              // カレントフォルダーにない場合、小説本文フォルダー(semantic 'novel')配下を自動探索
-              const novelFolder = navigator.findSemanticDirectory("novel");
-              if (novelFolder) {
-                const subList = navigator.listEntries(novelFolder);
-                const subNovel = subList.entries.find(
-                  (e) => !e.isDirectory && (e.documentType === "novel" || e.name.endsWith(".txt"))
-                );
-                if (subNovel) {
-                  const relFolder = path.relative(navigator.getCurrentDir(), novelFolder).replace(/\\/g, "/");
-                  targetFile = relFolder ? `${relFolder}/${subNovel.name}` : subNovel.name;
-                }
-              }
-            }
-          }
+          const { targetFile } = resolveNovelTarget(args);
 
           if (targetFile) {
             ctx.ui.notify(
@@ -203,6 +225,54 @@ export function createNovelaidExtension(options?: {
         },
       });
 
+      // 7. 校正・推敲支援コマンド (/proofread, /check [ファイル名])
+      const proofreadHandler = async (
+        args: string | undefined,
+        ctx: { ui: { notify: (msg: string, type?: "info" | "warning" | "error") => void } }
+      ) => {
+        const currentRel = navigator.getRelativeDir();
+        const displayRel = !currentRel || currentRel === "." ? "(プロジェクトルート)" : currentRel;
+        const { targetFile, resolvedPath } = resolveNovelTarget(args);
+
+        if (!targetFile || !resolvedPath || !fs.existsSync(resolvedPath)) {
+          ctx.ui.notify(
+            `【校正・推敲支援】\n` +
+            `現在の作業フォルダー [${displayRel}] 内に原稿ファイルが見つかりませんでした。\n` +
+            `ファイル名を指定して実行してください（例: /proofread 第1話.txt）\n` +
+            `または /cd novel で原稿フォルダーへ移動してください。`,
+            "warning"
+          );
+          return;
+        }
+
+        try {
+          const content = fs.readFileSync(resolvedPath, "utf-8");
+          const issues = scanProofreadIssues(content);
+          const summary = formatProofreadSummary(targetFile, issues);
+
+          ctx.ui.notify(
+            `${summary}\n\n` +
+            `💡 AIに対話で指示してください:\n` +
+            `「${targetFile} の誤字脱字と文末重複を校正して」\n` +
+            `「${targetFile} の文章リズムを整えて」\n` +
+            `※AIが原稿を読み込み、最小限の差分編集（edit）で修正案を提示します。`,
+            "info"
+          );
+        } catch (err) {
+          ctx.ui.notify(`【校正・推敲支援エラー】ファイルの読み込みに失敗しました: ${String(err)}`, "error");
+        }
+      };
+
+      api.registerCommand("proofread", {
+        description: "原稿ファイルの誤字脱字、表記揺れ、文末重複（リズム崩れ）をスキャン・校正案内します",
+        handler: proofreadHandler,
+      });
+
+      api.registerCommand("check", {
+        description: "原稿ファイルの誤字脱字、表記揺れ、文末重複をスキャン・校正案内します（/proofread のエイリアス）",
+        handler: proofreadHandler,
+      });
+
       // 6. /cd, /ls, /dir コマンドのパス引数自動補完プロバイダーの登録
       api.on("session_start", async (_event, ctx) => {
         ctx.ui.addAutocompleteProvider((current: AutocompleteProvider): AutocompleteProvider => {
@@ -211,28 +281,41 @@ export function createNovelaidExtension(options?: {
               const currentLine = lines[cursorLine] ?? "";
               const textBeforeCursor = currentLine.slice(0, cursorCol);
 
-              // /cd, /ls, /dir コマンドの引数入力を検出（例: "/cd ", "/cd 10", "/cd 10_novels/"）
-              const match = textBeforeCursor.match(/^\s*\/(?:cd|ls|dir)\s+([^\s]*)$/);
-              if (!match) {
-                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+              // 1. /cd, /ls, /dir コマンドのフォルダー引数補完
+              const folderMatch = textBeforeCursor.match(/^\s*\/(?:cd|ls|dir)\s+([^\s]*)$/);
+              if (folderMatch) {
+                const rawArg = folderMatch[1] ?? "";
+                const result = navigator.getFolderSuggestions(rawArg);
+                if (result.suggestions.length > 0) {
+                  return {
+                    items: result.suggestions.map((s) => ({
+                      value: s.path,
+                      label: s.path,
+                      description: s.description,
+                    })),
+                    prefix: result.prefix,
+                  };
+                }
               }
 
-              const rawArg = match[1] ?? "";
-              const result = navigator.getFolderSuggestions(rawArg);
-              if (result.suggestions.length === 0) {
-                return current.getSuggestions(lines, cursorLine, cursorCol, options);
+              // 2. /ruby, /proofread, /check コマンドの原稿ファイル引数補完
+              const fileMatch = textBeforeCursor.match(/^\s*\/(?:ruby|proofread|check)\s+([^\s]*)$/);
+              if (fileMatch) {
+                const rawArg = fileMatch[1] ?? "";
+                const result = navigator.getFileSuggestions(rawArg);
+                if (result.suggestions.length > 0) {
+                  return {
+                    items: result.suggestions.map((s) => ({
+                      value: s.path,
+                      label: s.path,
+                      description: s.description,
+                    })),
+                    prefix: result.prefix,
+                  };
+                }
               }
 
-              const items: AutocompleteItem[] = result.suggestions.map((s) => ({
-                value: s.path,
-                label: s.path,
-                description: s.description,
-              }));
-
-              return {
-                items,
-                prefix: result.prefix,
-              };
+              return current.getSuggestions(lines, cursorLine, cursorCol, options);
             },
 
             applyCompletion(lines, cursorLine, cursorCol, item, prefix) {

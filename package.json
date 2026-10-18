@@ -1,6 +1,6 @@
 {
   "name": "novelaid-cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Novel writing assistant powered by Pi Coding Agent SDK",
   "type": "module",
   "bin": {

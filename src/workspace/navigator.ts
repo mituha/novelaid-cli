@@ -541,6 +541,73 @@ export class WorkspaceNavigator {
   }
 
   /**
+   * /ruby, /proofread, /check 等のファイル入力に対する原稿ファイル補完候補を取得
+   * @param rawArg 入力途中の引数（例: "" や "第1" や "10_novels/第"）
+   */
+  getFileSuggestions(rawArg: string = ""): FolderSuggestionResult {
+    const normalized = rawArg.replace(/\\/g, "/");
+    const lastSlashIndex = normalized.lastIndexOf("/");
+    let searchDirRel = "";
+    let prefix = normalized;
+
+    if (lastSlashIndex >= 0) {
+      searchDirRel = normalized.slice(0, lastSlashIndex);
+      prefix = normalized.slice(lastSlashIndex + 1);
+    }
+
+    const searchTarget = searchDirRel ? path.resolve(this.currentDir, searchDirRel) : this.currentDir;
+
+    if (!this.isWithinRoot(searchTarget) || !fs.existsSync(searchTarget)) {
+      return { suggestions: [], prefix };
+    }
+
+    try {
+      const stat = fs.statSync(searchTarget);
+      if (!stat.isDirectory()) {
+        return { suggestions: [], prefix };
+      }
+
+      const entries = fs.readdirSync(searchTarget, { withFileTypes: true });
+      const suggestions: FolderSuggestion[] = [];
+
+      for (const ent of entries) {
+        if (ent.name.startsWith(".")) continue;
+        if (prefix !== "" && !ent.name.toLowerCase().startsWith(prefix.toLowerCase())) continue;
+
+        if (ent.isDirectory()) {
+          suggestions.push({
+            name: ent.name,
+            path: `${ent.name}/`,
+            description: "フォルダー",
+          });
+        } else {
+          // テキスト・Markdown原稿ファイルのみ候補化
+          const ext = path.extname(ent.name).toLowerCase();
+          if ([".txt", ".md", ".text"].includes(ext)) {
+            suggestions.push({
+              name: ent.name,
+              path: ent.name,
+              description: ext === ".txt" ? "小説原稿" : "Markdown文書",
+            });
+          }
+        }
+      }
+
+      suggestions.sort((a, b) => {
+        const aIsDir = a.path.endsWith("/");
+        const bIsDir = b.path.endsWith("/");
+        if (aIsDir && !bIsDir) return 1; // ファイルを優先表示
+        if (!aIsDir && bIsDir) return -1;
+        return a.name.localeCompare(b.name, "ja");
+      });
+
+      return { suggestions, prefix };
+    } catch {
+      return { suggestions: [], prefix };
+    }
+  }
+
+  /**
    * 指定されたパスがプロジェクトルート配下に収まっているかを検証
    */
   private isWithinRoot(targetPath: string): boolean {
